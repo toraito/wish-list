@@ -185,42 +185,14 @@
   .tier-items { display: flex; flex-direction: column; gap: 6px; }
 
   /* --- Cards --- */
-  .card-wrap {
-    position: relative;
-    overflow: hidden;
-    border-radius: 10px;
-  }
-
-  .card-archive-action {
-    position: absolute;
-    right: 0; top: 0; bottom: 0;
-    width: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #A68A64;
-    color: var(--cream);
-    border-radius: 10px;
-    transition: background 0.2s;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 13px;
-    font-family: var(--font-sans);
-  }
-  .card-archive-action.active { background: var(--walnut-mid); }
-
-  .card-fg {
-    position: relative;
-    z-index: 1;
+  .card {
     background: var(--cream);
     border-radius: 10px;
     padding: 12px 16px;
     box-shadow: 0 1px 4px rgba(62,43,26,0.06);
     cursor: pointer;
     user-select: none;
-    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
   }
-  .card-fg.swiping { transition: none; }
 
   .card-inner { display: flex; align-items: flex-start; gap: 12px; }
 
@@ -439,6 +411,26 @@
     margin-bottom: 20px;
     font-weight: 400;
   }
+  .modal-archive {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--walnut-light);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+    transition: all 0.15s;
+  }
+  .modal-archive:active {
+    background: rgba(92,61,46,0.06);
+  }
 </style>
 
 </head>
@@ -514,53 +506,6 @@ const ICONS = {
   download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   upload: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
 };
-
-// ============================================================
-// Swipe handling
-// ============================================================
-function initSwipe(cardWrap) {
-  const fg = cardWrap.querySelector('.card-fg');
-  const action = cardWrap.querySelector('.card-archive-action');
-  let startX = 0, currentOffset = 0, swiping = false;
-  const threshold = 80;
-
-  function onStart(cx) {
-    startX = cx;
-    swiping = true;
-    fg.classList.add('swiping');
-  }
-
-  function onMove(cx) {
-    if (!swiping) return;
-    const diff = startX - cx;
-    if (diff > 0) {
-      currentOffset = Math.min(diff, 120);
-      fg.style.transform = `translateX(-${currentOffset}px)`;
-      action.classList.toggle('active', currentOffset > threshold);
-    }
-  }
-
-  function onEnd() {
-    if (!swiping) return;
-    swiping = false;
-    fg.classList.remove('swiping');
-    if (currentOffset > threshold) {
-      const id = cardWrap.dataset.id;
-      archiveItem(id);
-    }
-    currentOffset = 0;
-    fg.style.transform = '';
-    action.classList.remove('active');
-  }
-
-  fg.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
-  fg.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), { passive: true });
-  fg.addEventListener('touchend', onEnd);
-  fg.addEventListener('mousedown', (e) => onStart(e.clientX));
-  fg.addEventListener('mousemove', (e) => { if (swiping) onMove(e.clientX); });
-  fg.addEventListener('mouseup', onEnd);
-  fg.addEventListener('mouseleave', () => { if (swiping) onEnd(); });
-}
 
 // ============================================================
 // Actions
@@ -719,16 +664,8 @@ function h(tag, attrs, ...children) {
 }
 
 function renderCard(item, completed = false) {
-  const wrap = h('div', { className: 'card-wrap', 'data-id': item.id });
-
-  // Archive action behind
-  const action = h('div', { className: 'card-archive-action' });
-  action.innerHTML = ICONS.archive + '<div>Archive</div>';
-  wrap.appendChild(action);
-
-  // Foreground
-  const fg = h('div', { className: 'card-fg' });
-  fg.addEventListener('click', (e) => {
+  const card = h('div', { className: 'card' });
+  card.addEventListener('click', (e) => {
     if (!completed) openEdit(item.id);
   });
 
@@ -769,10 +706,9 @@ function renderCard(item, completed = false) {
 
   inner.appendChild(cb);
   inner.appendChild(body);
-  fg.appendChild(inner);
-  wrap.appendChild(fg);
+  card.appendChild(inner);
 
-  return wrap;
+  return card;
 }
 
 // ============================================================
@@ -867,7 +803,6 @@ function render() {
     tierItems.forEach(item => {
       const card = renderCard(item, false);
       list.appendChild(card);
-      requestAnimationFrame(() => initSwipe(card));
     });
     section.appendChild(list);
     app.appendChild(section);
@@ -895,7 +830,6 @@ function render() {
     completed.forEach(item => {
       const card = renderCard(item, true);
       list.appendChild(card);
-      requestAnimationFrame(() => initSwipe(card));
     });
     section.appendChild(list);
     app.appendChild(section);
@@ -986,6 +920,16 @@ function renderModal() {
   btnRow.appendChild(h('button', { className: 'btn btn-ghost', onClick: closeEdit }, 'Cancel'));
   btnRow.appendChild(h('button', { className: 'btn btn-primary', onClick: saveEdit }, 'Save'));
   modal.appendChild(btnRow);
+
+  // Archive button
+  const archBtn = h('button', { className: 'modal-archive', onClick: () => {
+    const id = editingItem.id;
+    editingItem = null;
+    renderModal();
+    archiveItem(id);
+  }});
+  archBtn.innerHTML = ICONS.archiveSm + ' Archive this wish';
+  modal.appendChild(archBtn);
 
   overlay.appendChild(modal);
   root.appendChild(overlay);
