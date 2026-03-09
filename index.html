@@ -464,12 +464,14 @@ let importMsg = null;
 let importMsgTimer = null;
 
 function getTier(v) {
+  if (v === null || v === undefined || v === '') return 'ideas';
   if (v <= 50) return 'small';
   if (v <= 250) return 'medium';
   return 'big';
 }
 
 function formatCHF(v) {
+  if (v === null || v === undefined || v === '') return '—';
   return 'CHF ' + Number(v).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
@@ -477,6 +479,7 @@ const TIERS = [
   { key: 'small', label: 'Small', min: 0, max: 50 },
   { key: 'medium', label: 'Medium', min: 51, max: 250 },
   { key: 'big', label: 'Big', min: 251, max: Infinity },
+  { key: 'ideas', label: 'Ideas', min: null, max: null },
 ];
 
 // ============================================================
@@ -568,10 +571,12 @@ function addItem() {
   const categoryEl = document.getElementById('add-category');
   const linkEl = document.getElementById('add-link');
   const name = nameEl.value.trim();
-  const value = parseFloat(valueEl.value);
+  const rawValue = valueEl.value.trim();
+  const value = rawValue === '' ? null : parseFloat(rawValue);
   const category = categoryEl.value.trim();
   const link = linkEl.value.trim();
-  if (!name || isNaN(value) || value < 0) return;
+  if (!name) return;
+  if (value !== null && (isNaN(value) || value < 0)) return;
 
   items.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -625,10 +630,12 @@ function saveEdit() {
   const categoryEl = document.getElementById('edit-category');
   const linkEl = document.getElementById('edit-link');
   const name = nameEl.value.trim();
-  const value = parseFloat(valueEl.value);
+  const rawValue = valueEl.value.trim();
+  const value = rawValue === '' ? null : parseFloat(rawValue);
   const category = categoryEl.value.trim();
   const link = linkEl.value.trim();
-  if (!name || isNaN(value) || value < 0) return;
+  if (!name) return;
+  if (value !== null && (isNaN(value) || value < 0)) return;
 
   const item = items.find(i => i.id === editingItem.id);
   if (item) {
@@ -677,7 +684,7 @@ function importData(e) {
     try {
       const data = JSON.parse(ev.target.result);
       if (!Array.isArray(data)) throw new Error('Invalid');
-      if (!data.every(i => i.id && i.name != null && i.value != null)) throw new Error('Invalid');
+      if (!data.every(i => i.id && i.name != null)) throw new Error('Invalid');
       items = data.map(i => ({ ...i, tier: getTier(i.value) }));
       saveItems();
       render();
@@ -783,9 +790,10 @@ function render() {
   // Header
   const header = h('div', { className: 'header' });
   header.appendChild(h('h1', null, 'Wish List'));
-  const total = pending.reduce((s, i) => s + i.value, 0);
+  const total = pending.reduce((s, i) => s + (i.value || 0), 0);
+  const priced = pending.filter(i => i.value !== null);
   header.appendChild(h('p', { className: 'subtitle' },
-    `${pending.length} wish${pending.length !== 1 ? 'es' : ''} · ${formatCHF(total)} total`
+    `${pending.length} wish${pending.length !== 1 ? 'es' : ''}` + (priced.length > 0 ? ` · ${formatCHF(total)} total` : '')
   ));
   app.appendChild(header);
 
@@ -806,7 +814,7 @@ function render() {
 
     const f2 = h('div', { className: 'field-sm' });
     f2.appendChild(h('label', { className: 'label', for: 'add-value' }, 'CHF'));
-    f2.appendChild(h('input', { className: 'input', id: 'add-value', type: 'number', min: '0', placeholder: '0' }));
+    f2.appendChild(h('input', { className: 'input', id: 'add-value', type: 'number', min: '0', placeholder: '—' }));
     row.appendChild(f2);
     form.appendChild(row);
 
@@ -839,17 +847,20 @@ function render() {
 
   // Tiers
   TIERS.forEach(tier => {
-    const tierItems = pending.filter(i => i.tier === tier.key).sort((a, b) => a.value - b.value);
+    const tierItems = pending.filter(i => i.tier === tier.key)
+      .sort((a, b) => tier.key === 'ideas' ? (a.createdAt - b.createdAt) : (a.value - b.value));
     if (tierItems.length === 0) return;
 
-    const tierTotal = tierItems.reduce((s, i) => s + i.value, 0);
     const section = h('div', { className: 'tier' });
 
     const hdr = h('div', { className: 'tier-header' });
     hdr.appendChild(h('h2', null, tier.label));
-    hdr.appendChild(h('span', { className: 'meta' },
-      `${tierItems.length} item${tierItems.length !== 1 ? 's' : ''} · ${formatCHF(tierTotal)}`
-    ));
+    const isIdeas = tier.key === 'ideas';
+    const tierTotal = isIdeas ? 0 : tierItems.reduce((s, i) => s + i.value, 0);
+    const metaText = isIdeas
+      ? `${tierItems.length} item${tierItems.length !== 1 ? 's' : ''}`
+      : `${tierItems.length} item${tierItems.length !== 1 ? 's' : ''} · ${formatCHF(tierTotal)}`;
+    hdr.appendChild(h('span', { className: 'meta' }, metaText));
     section.appendChild(hdr);
 
     const list = h('div', { className: 'tier-items' });
@@ -966,7 +977,7 @@ function renderModal() {
   modal.appendChild(h('input', { className: 'input', id: 'edit-category', value: editingItem.category || '', placeholder: 'e.g. book, tech, stationery' }));
 
   modal.appendChild(h('label', { className: 'label', for: 'edit-value' }, 'Amount (CHF)'));
-  modal.appendChild(h('input', { className: 'input', id: 'edit-value', type: 'number', min: '0', value: String(editingItem.value) }));
+  modal.appendChild(h('input', { className: 'input', id: 'edit-value', type: 'number', min: '0', value: editingItem.value !== null && editingItem.value !== undefined ? String(editingItem.value) : '', placeholder: 'Leave blank for Ideas' }));
 
   modal.appendChild(h('label', { className: 'label', for: 'edit-link' }, 'Link (optional)'));
   modal.appendChild(h('input', { className: 'input', id: 'edit-link', value: editingItem.link || '', placeholder: 'https://...' }));
