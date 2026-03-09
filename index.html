@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Wish List</title>
+
+<!-- PWA & iOS Home Screen -->
+<link rel="manifest" href="./manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wish List">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="theme-color" content="#F5EDE0">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --walnut-deep: #3E2B1A;
+    --walnut: #5C3D2E;
+    --walnut-mid: #8B6F47;
+    --walnut-light: #A08B6E;
+    --walnut-faded: #B8A88A;
+    --walnut-muted: #C0AD91;
+    --border: #D4C4A8;
+    --border-light: #C9B99A;
+    --cream: #FFF8F0;
+    --cream-bg: #F5EDE0;
+    --cream-bg2: #EDE3D3;
+    --font-serif: 'Libre Baskerville', Georgia, serif;
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+  }
+
+  html, body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: linear-gradient(180deg, var(--cream-bg) 0%, var(--cream-bg2) 100%);
+    font-family: var(--font-sans);
+    color: var(--walnut-deep);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  input:focus { outline: none; border-color: var(--walnut-mid) !important; }
+  ::placeholder { color: var(--walnut-faded); }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- Layout --- */
+  .container {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 16px 100px;
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .header {
+    padding: 48px 0 8px;
+    text-align: center;
+  }
+
+  .header h1 {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--walnut-deep);
+    letter-spacing: -0.02em;
+  }
+
+  .header .subtitle {
+    font-size: 13px;
+    color: var(--walnut-light);
+    margin-top: 6px;
+    font-style: italic;
+    font-family: var(--font-serif);
+  }
+
+  /* --- Add button / form --- */
+  .add-trigger {
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 12px;
+    border: 1.5px dashed var(--border-light);
+    background: rgba(255,248,240,0.5);
+    color: var(--walnut-mid);
+    font-size: 14px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .add-trigger:active { border-color: var(--walnut-mid); }
+
+  .add-form {
+    background: var(--cream);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 2px 16px rgba(62,43,26,0.08);
+    animation: fadeIn 0.25s ease-out;
+  }
+
+  .add-form .row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .add-form .row .field { flex: 1; }
+  .add-form .row .field-sm { width: 110px; }
+
+  label.label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--walnut-mid);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--cream);
+    font-size: 14px;
+    font-family: var(--font-sans);
+    color: var(--walnut-deep);
+    margin-bottom: 8px;
+  }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+
+  .btn {
+    padding: 11px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    cursor: pointer;
+    flex: 1;
+    transition: opacity 0.15s;
+  }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--walnut); color: var(--cream); }
+  .btn-ghost { background: transparent; color: var(--walnut-mid); border: 1px solid var(--border); }
+
+  /* --- Tier sections --- */
+  .tier { margin-bottom: 24px; animation: fadeIn 0.3s ease-out; }
+
+  .tier-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    margin-bottom: 10px;
+  }
+
+  .tier-header h2 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--walnut);
+  }
+
+  .tier-header .meta {
+    font-size: 12px;
+    color: var(--walnut-light);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tier-items { display: flex; flex-direction: column; gap: 6px; }
+
+  /* --- Cards --- */
+  .card-wrap {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+
+  .card-archive-action {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #A68A64;
+    color: var(--cream);
+    border-radius: 10px;
+    transition: background 0.2s;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 13px;
+    font-family: var(--font-sans);
+  }
+  .card-archive-action.active { background: var(--walnut-mid); }
+
+  .card-fg {
+    position: relative;
+    z-index: 1;
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 12px 16px;
+    box-shadow: 0 1px 4px rgba(62,43,26,0.06);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  .card-fg.swiping { transition: none; }
+
+  .card-inner { display: flex; align-items: flex-start; gap: 12px; }
+
+  .checkbox {
+    width: 20px; height: 20px; min-width: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border-light);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    margin-top: 1px;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .checkbox.checked {
+    border: none;
+    background: var(--walnut-mid);
+  }
+
+  .card-body { flex: 1; min-width: 0; }
+  .card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .card-name {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--walnut-deep);
+    line-height: 1.3;
+  }
+  .card-value {
+    font-size: 13px;
+    color: var(--walnut);
+    font-weight: 500;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-link {
+    font-size: 12px;
+    color: var(--walnut-mid);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 4px;
+    border-bottom: 1px solid rgba(139,111,71,0.3);
+    padding-bottom: 1px;
+  }
+
+  /* Completed */
+  .card-name.done, .card-value.done {
+    color: var(--walnut-muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--border);
+  }
+
+  /* --- Empty state --- */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--walnut-faded);
+  }
+  .empty p {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+
+  /* --- Completed section header --- */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 0 4px;
+    margin-bottom: 10px;
+  }
+  .section-header h2 {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--walnut-light);
+  }
+  .section-header .meta {
+    font-size: 12px;
+    color: var(--walnut-faded);
+  }
+
+  /* --- Archived toggle --- */
+  .archive-toggle {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(92,61,46,0.06);
+    color: var(--walnut-light);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .archive-toggle .left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .archive-toggle .chevron {
+    transition: transform 0.2s;
+  }
+  .archive-toggle .chevron.open {
+    transform: rotate(180deg);
+  }
+
+  /* Archived items */
+  .archived-card {
+    background: rgba(255,248,240,0.5);
+    border-radius: 10px;
+    padding: 12px 16px;
+    opacity: 0.5;
+  }
+  .archived-card .card-row { align-items: center; }
+  .archived-card .name { font-size: 14px; color: var(--walnut-light); flex: 1; }
+  .archived-card .value {
+    font-size: 13px; color: var(--walnut-faded);
+    white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .archived-card .actions {
+    display: flex; gap: 6px; margin-left: 12px;
+  }
+  .btn-sm {
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    font-size: 12px;
+    font-family: var(--font-sans);
+    cursor: pointer;
+  }
+  .btn-sm.restore { color: var(--walnut-mid); }
+  .btn-sm.delete { color: var(--walnut-faded); }
+
+  /* --- Backup section --- */
+  .backup {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(201,185,154,0.4);
+    text-align: center;
+  }
+  .backup-title {
+    font-size: 11px;
+    color: var(--walnut-faded);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .backup .btn-row { margin-top: 0; }
+  .backup-note {
+    font-size: 11px;
+    color: var(--border-light);
+    margin-top: 10px;
+    line-height: 1.5;
+  }
+  .backup-msg {
+    font-size: 12px;
+    margin-top: 10px;
+    animation: fadeIn 0.25s ease-out;
+  }
+  .backup-msg.success { color: #5C7A4A; }
+  .backup-msg.error { color: #A0522D; }
+
+  /* --- Modal --- */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(62,43,26,0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal {
+    background: var(--cream);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 20px 60px rgba(62,43,26,0.25);
+    animation: fadeIn 0.2s ease-out;
+  }
+  .modal h3 {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--walnut-deep);
+    margin-bottom: 20px;
+    font-weight: 400;
+  }
+</style>
+</head>
+<body>
+
+<div class="container" id="app"></div>
+
+<!-- Modal container -->
+<div id="modal-root"></div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+const STORAGE_KEY = 'wishlist-items';
+
+let items = [];
+let addOpen = false;
+let showArchived = false;
+let editingItem = null;
+let importMsg = null;
+let importMsgTimer = null;
+
+function getTier(v) {
+  if (v <= 50) return 'small';
+  if (v <= 250) return 'medium';
+  return 'big';
+}
+
+function formatCHF(v) {
+  return 'CHF ' + Number(v).toLocaleString('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+const TIERS = [
+  { key: 'small', label: 'Small', min: 0, max: 50 },
+  { key: 'medium', label: 'Medium', min: 51, max: 250 },
+  { key: 'big', label: 'Big', min: 251, max: Infinity },
+];
+
+// ============================================================
+// Persistence
+// ============================================================
+function loadItems() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveItems() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (e) {
+    console.error('Storage save error:', e);
+  }
+}
+
+// ============================================================
+// SVG icons (inline strings)
+// ============================================================
+const ICONS = {
+  plus: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  archive: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
+  archiveSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
+  check: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FFF8F0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  link: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+  heart: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C9B99A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+  chevron: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+  upload: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+};
+
+// ============================================================
+// Swipe handling
+// ============================================================
+function initSwipe(cardWrap) {
+  const fg = cardWrap.querySelector('.card-fg');
+  const action = cardWrap.querySelector('.card-archive-action');
+  let startX = 0, currentOffset = 0, swiping = false;
+  const threshold = 80;
+
+  function onStart(cx) {
+    startX = cx;
+    swiping = true;
+    fg.classList.add('swiping');
+  }
+
+  function onMove(cx) {
+    if (!swiping) return;
+    const diff = startX - cx;
+    if (diff > 0) {
+      currentOffset = Math.min(diff, 120);
+      fg.style.transform = `translateX(-${currentOffset}px)`;
+      action.classList.toggle('active', currentOffset > threshold);
+    }
+  }
+
+  function onEnd() {
+    if (!swiping) return;
+    swiping = false;
+    fg.classList.remove('swiping');
+    if (currentOffset > threshold) {
+      const id = cardWrap.dataset.id;
+      archiveItem(id);
+    }
+    currentOffset = 0;
+    fg.style.transform = '';
+    action.classList.remove('active');
+  }
+
+  fg.addEventListener('touchstart', (e) => onStart(e.touches[0].clientX), { passive: true });
+  fg.addEventListener('touchmove', (e) => onMove(e.touches[0].clientX), { passive: true });
+  fg.addEventListener('touchend', onEnd);
+  fg.addEventListener('mousedown', (e) => onStart(e.clientX));
+  fg.addEventListener('mousemove', (e) => { if (swiping) onMove(e.clientX); });
+  fg.addEventListener('mouseup', onEnd);
+  fg.addEventListener('mouseleave', () => { if (swiping) onEnd(); });
+}
+
+// ============================================================
+// Actions
+// ============================================================
+function addItem() {
+  const nameEl = document.getElementById('add-name');
+  const valueEl = document.getElementById('add-value');
+  const linkEl = document.getElementById('add-link');
+  const name = nameEl.value.trim();
+  const value = parseFloat(valueEl.value);
+  const link = linkEl.value.trim();
+  if (!name || isNaN(value) || value < 0) return;
+
+  items.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    name, value, link: link || '',
+    tier: getTier(value),
+    completed: false,
+    archived: false,
+    createdAt: Date.now(),
+  });
+  addOpen = false;
+  saveItems();
+  render();
+}
+
+function toggleComplete(id) {
+  const item = items.find(i => i.id === id);
+  if (item) item.completed = !item.completed;
+  saveItems();
+  render();
+}
+
+function archiveItem(id) {
+  const item = items.find(i => i.id === id);
+  if (item) item.archived = true;
+  saveItems();
+  render();
+}
+
+function restoreItem(id) {
+  const item = items.find(i => i.id === id);
+  if (item) item.archived = false;
+  saveItems();
+  render();
+}
+
+function deleteItem(id) {
+  items = items.filter(i => i.id !== id);
+  saveItems();
+  render();
+}
+
+function openEdit(id) {
+  editingItem = items.find(i => i.id === id) || null;
+  renderModal();
+}
+
+function saveEdit() {
+  if (!editingItem) return;
+  const nameEl = document.getElementById('edit-name');
+  const valueEl = document.getElementById('edit-value');
+  const linkEl = document.getElementById('edit-link');
+  const name = nameEl.value.trim();
+  const value = parseFloat(valueEl.value);
+  const link = linkEl.value.trim();
+  if (!name || isNaN(value) || value < 0) return;
+
+  const item = items.find(i => i.id === editingItem.id);
+  if (item) {
+    item.name = name;
+    item.value = value;
+    item.link = link || '';
+    item.tier = getTier(value);
+  }
+  editingItem = null;
+  saveItems();
+  render();
+  renderModal();
+}
+
+function closeEdit() {
+  editingItem = null;
+  renderModal();
+}
+
+function showImportMsg(type, text) {
+  importMsg = { type, text };
+  render();
+  clearTimeout(importMsgTimer);
+  importMsgTimer = setTimeout(() => { importMsg = null; render(); }, 3000);
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `wishlist-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showImportMsg('success', 'Backup downloaded');
+}
+
+function importData(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error('Invalid');
+      if (!data.every(i => i.id && i.name != null && i.value != null)) throw new Error('Invalid');
+      items = data.map(i => ({ ...i, tier: getTier(i.value) }));
+      saveItems();
+      render();
+      showImportMsg('success', `Imported ${items.length} item${items.length !== 1 ? 's' : ''}`);
+    } catch {
+      showImportMsg('error', 'Invalid backup file');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ============================================================
+// Render helpers
+// ============================================================
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'className') el.className = v;
+      else if (k === 'innerHTML') el.innerHTML = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+      else el.setAttribute(k, v);
+    }
+  }
+  for (const c of children) {
+    if (typeof c === 'string') el.appendChild(document.createTextNode(c));
+    else if (c) el.appendChild(c);
+  }
+  return el;
+}
+
+function renderCard(item, completed = false) {
+  const wrap = h('div', { className: 'card-wrap', 'data-id': item.id });
+
+  // Archive action behind
+  const action = h('div', { className: 'card-archive-action' });
+  action.innerHTML = ICONS.archive + '<div>Archive</div>';
+  wrap.appendChild(action);
+
+  // Foreground
+  const fg = h('div', { className: 'card-fg' });
+  fg.addEventListener('click', (e) => {
+    if (!completed) openEdit(item.id);
+  });
+
+  const inner = h('div', { className: 'card-inner' });
+
+  // Checkbox
+  const cb = h('button', {
+    className: 'checkbox' + (completed ? ' checked' : ''),
+    'aria-label': completed ? 'Mark as incomplete' : 'Mark as completed',
+  });
+  if (completed) cb.innerHTML = ICONS.check;
+  cb.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleComplete(item.id);
+  });
+
+  const body = h('div', { className: 'card-body' });
+  const row = h('div', { className: 'card-row' });
+  row.appendChild(h('span', { className: 'card-name' + (completed ? ' done' : '') }, item.name));
+  row.appendChild(h('span', { className: 'card-value' + (completed ? ' done' : '') }, formatCHF(item.value)));
+  body.appendChild(row);
+
+  if (item.link && !completed) {
+    const link = h('a', {
+      className: 'card-link',
+      href: item.link,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+    });
+    link.innerHTML = ICONS.link + ' Link';
+    link.addEventListener('click', (e) => e.stopPropagation());
+    body.appendChild(link);
+  }
+
+  inner.appendChild(cb);
+  inner.appendChild(body);
+  fg.appendChild(inner);
+  wrap.appendChild(fg);
+
+  return wrap;
+}
+
+// ============================================================
+// Main render
+// ============================================================
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  const active = items.filter(i => !i.archived);
+  const archived = items.filter(i => i.archived);
+  const completed = active.filter(i => i.completed);
+  const pending = active.filter(i => !i.completed);
+
+  // Header
+  const header = h('div', { className: 'header' });
+  header.appendChild(h('h1', null, 'Wish List'));
+  const total = pending.reduce((s, i) => s + i.value, 0);
+  header.appendChild(h('p', { className: 'subtitle' },
+    `${pending.length} wish${pending.length !== 1 ? 'es' : ''} · ${formatCHF(total)} total`
+  ));
+  app.appendChild(header);
+
+  // Add section
+  const addSection = h('div', { style: { margin: '20px 0 28px' } });
+  if (!addOpen) {
+    const trigger = h('button', { className: 'add-trigger', onClick: () => { addOpen = true; render(); } });
+    trigger.innerHTML = ICONS.plus + ' Add a wish';
+    addSection.appendChild(trigger);
+  } else {
+    const form = h('div', { className: 'add-form' });
+    const row = h('div', { className: 'row' });
+
+    const f1 = h('div', { className: 'field' });
+    f1.appendChild(h('label', { className: 'label', for: 'add-name' }, 'Item'));
+    f1.appendChild(h('input', { className: 'input', id: 'add-name', placeholder: 'What do you want?' }));
+    row.appendChild(f1);
+
+    const f2 = h('div', { className: 'field-sm' });
+    f2.appendChild(h('label', { className: 'label', for: 'add-value' }, 'CHF'));
+    f2.appendChild(h('input', { className: 'input', id: 'add-value', type: 'number', min: '0', placeholder: '0' }));
+    row.appendChild(f2);
+    form.appendChild(row);
+
+    form.appendChild(h('label', { className: 'label', for: 'add-link' }, 'Link (optional)'));
+    form.appendChild(h('input', { className: 'input', id: 'add-link', placeholder: 'https://...' }));
+
+    const btnRow = h('div', { className: 'btn-row' });
+    btnRow.appendChild(h('button', { className: 'btn btn-ghost', onClick: () => { addOpen = false; render(); } }, 'Cancel'));
+    btnRow.appendChild(h('button', { className: 'btn btn-primary', onClick: addItem }, 'Add'));
+    form.appendChild(btnRow);
+    addSection.appendChild(form);
+  }
+  app.appendChild(addSection);
+
+  // Focus name input after render
+  if (addOpen) {
+    requestAnimationFrame(() => {
+      const el = document.getElementById('add-name');
+      if (el) el.focus();
+      // Add enter-to-submit
+      ['add-name', 'add-value', 'add-link'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
+      });
+    });
+  }
+
+  // Tiers
+  TIERS.forEach(tier => {
+    const tierItems = pending.filter(i => i.tier === tier.key).sort((a, b) => a.value - b.value);
+    if (tierItems.length === 0) return;
+
+    const tierTotal = tierItems.reduce((s, i) => s + i.value, 0);
+    const section = h('div', { className: 'tier' });
+
+    const hdr = h('div', { className: 'tier-header' });
+    hdr.appendChild(h('h2', null, tier.label));
+    hdr.appendChild(h('span', { className: 'meta' },
+      `${tierItems.length} item${tierItems.length !== 1 ? 's' : ''} · ${formatCHF(tierTotal)}`
+    ));
+    section.appendChild(hdr);
+
+    const list = h('div', { className: 'tier-items' });
+    tierItems.forEach(item => {
+      const card = renderCard(item, false);
+      list.appendChild(card);
+      requestAnimationFrame(() => initSwipe(card));
+    });
+    section.appendChild(list);
+    app.appendChild(section);
+  });
+
+  // Empty
+  if (pending.length === 0) {
+    const empty = h('div', { className: 'empty' });
+    empty.innerHTML = ICONS.heart;
+    empty.appendChild(h('p', null, 'No wishes yet — add your first one above'));
+    app.appendChild(empty);
+  }
+
+  // Completed
+  if (completed.length > 0) {
+    const section = h('div', { style: { marginBottom: '24px', marginTop: '8px' } });
+    const hdr = h('div', { className: 'section-header' });
+    hdr.appendChild(h('h2', null, 'Completed'));
+    hdr.appendChild(h('span', { className: 'meta' },
+      `${completed.length} item${completed.length !== 1 ? 's' : ''}`
+    ));
+    section.appendChild(hdr);
+
+    const list = h('div', { className: 'tier-items' });
+    completed.forEach(item => {
+      const card = renderCard(item, true);
+      list.appendChild(card);
+      requestAnimationFrame(() => initSwipe(card));
+    });
+    section.appendChild(list);
+    app.appendChild(section);
+  }
+
+  // Archived
+  if (archived.length > 0) {
+    const archSection = h('div', { style: { marginTop: '16px' } });
+
+    const toggle = h('button', { className: 'archive-toggle', onClick: () => { showArchived = !showArchived; render(); } });
+    const left = h('span', { className: 'left' });
+    left.innerHTML = ICONS.archiveSm + ` Archived · ${archived.length} item${archived.length !== 1 ? 's' : ''}`;
+    toggle.appendChild(left);
+    const chevSpan = h('span', { className: 'chevron' + (showArchived ? ' open' : '') });
+    chevSpan.innerHTML = ICONS.chevron;
+    toggle.appendChild(chevSpan);
+    archSection.appendChild(toggle);
+
+    if (showArchived) {
+      const list = h('div', { className: 'tier-items', style: { marginTop: '10px', animation: 'fadeIn 0.25s ease-out' } });
+      archived.forEach(item => {
+        const card = h('div', { className: 'archived-card' });
+        const row = h('div', { className: 'card-row' });
+        row.appendChild(h('span', { className: 'name' }, item.name));
+        row.appendChild(h('span', { className: 'value' }, formatCHF(item.value)));
+        const actions = h('div', { className: 'actions' });
+        actions.appendChild(h('button', { className: 'btn-sm restore', onClick: () => restoreItem(item.id) }, 'Restore'));
+        actions.appendChild(h('button', { className: 'btn-sm delete', onClick: () => deleteItem(item.id) }, 'Delete'));
+        row.appendChild(actions);
+        card.appendChild(row);
+        list.appendChild(card);
+      });
+      archSection.appendChild(list);
+    }
+    app.appendChild(archSection);
+  }
+
+  // Backup
+  const backup = h('div', { className: 'backup' });
+  backup.appendChild(h('p', { className: 'backup-title' }, 'Backup & Restore'));
+
+  const bRow = h('div', { className: 'btn-row' });
+  const expBtn = h('button', { className: 'btn btn-ghost', onClick: exportData });
+  expBtn.innerHTML = ICONS.download + ' Export';
+  bRow.appendChild(expBtn);
+
+  const impBtn = h('button', { className: 'btn btn-ghost', onClick: () => document.getElementById('file-input').click() });
+  impBtn.innerHTML = ICONS.upload + ' Import';
+  bRow.appendChild(impBtn);
+  backup.appendChild(bRow);
+
+  backup.appendChild(h('input', { id: 'file-input', type: 'file', accept: '.json', style: { display: 'none' }, onChange: importData }));
+
+  if (importMsg) {
+    backup.appendChild(h('p', { className: 'backup-msg ' + importMsg.type }, importMsg.text));
+  }
+
+  backup.appendChild(h('p', { className: 'backup-note' }, 'Export saves a JSON backup. Import replaces all current data.'));
+  app.appendChild(backup);
+}
+
+// ============================================================
+// Modal render
+// ============================================================
+function renderModal() {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = '';
+  if (!editingItem) return;
+
+  const overlay = h('div', { className: 'modal-overlay', onClick: closeEdit });
+  const modal = h('div', { className: 'modal', onClick: (e) => e.stopPropagation() });
+
+  modal.appendChild(h('h3', null, 'Edit Wish'));
+
+  modal.appendChild(h('label', { className: 'label', for: 'edit-name' }, 'Item'));
+  modal.appendChild(h('input', { className: 'input', id: 'edit-name', value: editingItem.name }));
+
+  modal.appendChild(h('label', { className: 'label', for: 'edit-value' }, 'Amount (CHF)'));
+  modal.appendChild(h('input', { className: 'input', id: 'edit-value', type: 'number', min: '0', value: String(editingItem.value) }));
+
+  modal.appendChild(h('label', { className: 'label', for: 'edit-link' }, 'Link (optional)'));
+  modal.appendChild(h('input', { className: 'input', id: 'edit-link', value: editingItem.link || '', placeholder: 'https://...' }));
+
+  const btnRow = h('div', { className: 'btn-row', style: { marginTop: '20px' } });
+  btnRow.appendChild(h('button', { className: 'btn btn-ghost', onClick: closeEdit }, 'Cancel'));
+  btnRow.appendChild(h('button', { className: 'btn btn-primary', onClick: saveEdit }, 'Save'));
+  modal.appendChild(btnRow);
+
+  overlay.appendChild(modal);
+  root.appendChild(overlay);
+}
+
+// ============================================================
+// Init
+// ============================================================
+items = loadItems();
+render();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
