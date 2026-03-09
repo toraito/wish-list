@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wishlist-v3';
+const CACHE_NAME = 'wishlist-v4';
 const ASSETS = [
   './',
   './index.html',
