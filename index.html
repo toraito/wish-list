@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6,6 +7,7 @@
 <title>Wish List</title>
 
 <!-- PWA & iOS Home Screen -->
+
 <link rel="manifest" href="./manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -14,6 +16,7 @@
 <meta name="theme-color" content="#F5EDE0">
 
 <!-- Fonts -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap" rel="stylesheet">
@@ -274,6 +277,16 @@
     padding-bottom: 1px;
   }
 
+  .card-category {
+    font-size: 12px;
+    color: var(--walnut-faded);
+    margin-left: 6px;
+    font-weight: 400;
+  }
+  .card-category.done {
+    color: var(--border);
+  }
+
   /* Completed */
   .card-name.done, .card-value.done {
     color: var(--walnut-muted);
@@ -427,12 +440,14 @@
     font-weight: 400;
   }
 </style>
+
 </head>
 <body>
 
 <div class="container" id="app"></div>
 
 <!-- Modal container -->
+
 <div id="modal-root"></div>
 
 <script>
@@ -550,15 +565,17 @@ function initSwipe(cardWrap) {
 function addItem() {
   const nameEl = document.getElementById('add-name');
   const valueEl = document.getElementById('add-value');
+  const categoryEl = document.getElementById('add-category');
   const linkEl = document.getElementById('add-link');
   const name = nameEl.value.trim();
   const value = parseFloat(valueEl.value);
+  const category = categoryEl.value.trim();
   const link = linkEl.value.trim();
   if (!name || isNaN(value) || value < 0) return;
 
   items.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    name, value, link: link || '',
+    name, value, category: category || '', link: link || '',
     tier: getTier(value),
     completed: false,
     archived: false,
@@ -605,9 +622,11 @@ function saveEdit() {
   if (!editingItem) return;
   const nameEl = document.getElementById('edit-name');
   const valueEl = document.getElementById('edit-value');
+  const categoryEl = document.getElementById('edit-category');
   const linkEl = document.getElementById('edit-link');
   const name = nameEl.value.trim();
   const value = parseFloat(valueEl.value);
+  const category = categoryEl.value.trim();
   const link = linkEl.value.trim();
   if (!name || isNaN(value) || value < 0) return;
 
@@ -615,6 +634,7 @@ function saveEdit() {
   if (item) {
     item.name = name;
     item.value = value;
+    item.category = category || '';
     item.link = link || '';
     item.tier = getTier(value);
   }
@@ -720,7 +740,11 @@ function renderCard(item, completed = false) {
 
   const body = h('div', { className: 'card-body' });
   const row = h('div', { className: 'card-row' });
-  row.appendChild(h('span', { className: 'card-name' + (completed ? ' done' : '') }, item.name));
+  const nameSpan = h('span', { className: 'card-name' + (completed ? ' done' : '') }, item.name);
+  if (item.category) {
+    nameSpan.appendChild(h('span', { className: 'card-category' + (completed ? ' done' : '') }, ' · ' + item.category));
+  }
+  row.appendChild(nameSpan);
   row.appendChild(h('span', { className: 'card-value' + (completed ? ' done' : '') }, formatCHF(item.value)));
   body.appendChild(row);
 
@@ -786,6 +810,9 @@ function render() {
     row.appendChild(f2);
     form.appendChild(row);
 
+    form.appendChild(h('label', { className: 'label', for: 'add-category' }, 'Type (optional)'));
+    form.appendChild(h('input', { className: 'input', id: 'add-category', placeholder: 'e.g. book, tech, stationery' }));
+
     form.appendChild(h('label', { className: 'label', for: 'add-link' }, 'Link (optional)'));
     form.appendChild(h('input', { className: 'input', id: 'add-link', placeholder: 'https://...' }));
 
@@ -803,7 +830,7 @@ function render() {
       const el = document.getElementById('add-name');
       if (el) el.focus();
       // Add enter-to-submit
-      ['add-name', 'add-value', 'add-link'].forEach(id => {
+      ['add-name', 'add-value', 'add-category', 'add-link'].forEach(id => {
         const input = document.getElementById(id);
         if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addItem(); });
       });
@@ -935,6 +962,9 @@ function renderModal() {
   modal.appendChild(h('label', { className: 'label', for: 'edit-name' }, 'Item'));
   modal.appendChild(h('input', { className: 'input', id: 'edit-name', value: editingItem.name }));
 
+  modal.appendChild(h('label', { className: 'label', for: 'edit-category' }, 'Type (optional)'));
+  modal.appendChild(h('input', { className: 'input', id: 'edit-category', value: editingItem.category || '', placeholder: 'e.g. book, tech, stationery' }));
+
   modal.appendChild(h('label', { className: 'label', for: 'edit-value' }, 'Amount (CHF)'));
   modal.appendChild(h('input', { className: 'input', id: 'edit-value', type: 'number', min: '0', value: String(editingItem.value) }));
 
@@ -961,5 +991,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 </script>
+
 </body>
 </html>
