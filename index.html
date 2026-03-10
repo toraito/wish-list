@@ -80,6 +80,23 @@
     letter-spacing: -0.02em;
   }
 
+  .sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--border-light);
+    font-family: var(--font-sans);
+    transition: opacity 0.4s;
+    opacity: 0;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .sync-indicator.visible { opacity: 1; }
+  .sync-indicator.error { color: #A0522D; }
+
   .header .subtitle {
     font-size: 13px;
     color: var(--walnut-light);
@@ -475,8 +492,14 @@ const TIERS = [
 ];
 
 // ============================================================
-// Persistence
+// Persistence + Firebase Sync
 // ============================================================
+const FIREBASE_URL = 'https://wish-list-sync-default-rtdb.europe-west1.firebasedatabase.app';
+const FIREBASE_PATH = '/wishlist.json';
+const TIMESTAMP_KEY = 'wishlist-lastModified';
+
+let syncTimer = null;
+
 function loadItems() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -484,12 +507,89 @@ function loadItems() {
   } catch { return []; }
 }
 
+function getLocalTimestamp() {
+  return parseInt(localStorage.getItem(TIMESTAMP_KEY) || '0', 10);
+}
+
 function saveItems() {
   try {
+    const now = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(TIMESTAMP_KEY, String(now));
+    // Debounced cloud push — waits 1s after last change to avoid spamming
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => pushToCloud(now), 1000);
   } catch (e) {
     console.error('Storage save error:', e);
   }
+}
+
+async function pushToCloud(timestamp) {
+  try {
+    const payload = { items, lastModified: timestamp || Date.now() };
+    const res = await fetch(FIREBASE_URL + FIREBASE_PATH, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) showSyncStatus('synced');
+    else showSyncStatus('error');
+  } catch {
+    showSyncStatus('error');
+  }
+}
+
+async function pullFromCloud() {
+  try {
+    const res = await fetch(FIREBASE_URL + FIREBASE_PATH);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && Array.isArray(data.items) && data.lastModified) return data;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function syncOnLoad() {
+  const cloud = await pullFromCloud();
+  if (!cloud) {
+    // No cloud data or offline — push local up if we have items
+    if (items.length > 0) pushToCloud(getLocalTimestamp());
+    return;
+  }
+
+  const localTs = getLocalTimestamp();
+  const cloudTs = cloud.lastModified || 0;
+
+  if (cloudTs > localTs) {
+    // Cloud is newer — pull down
+    items = cloud.items.map(i => ({ ...i, tier: getTier(i.value) }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(TIMESTAMP_KEY, String(cloudTs));
+    render();
+    showSyncStatus('synced');
+  } else if (localTs > cloudTs) {
+    // Local is newer — push up
+    pushToCloud(localTs);
+  } else {
+    showSyncStatus('synced');
+  }
+}
+
+let syncStatusTimer = null;
+function showSyncStatus(status) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  clearTimeout(syncStatusTimer);
+  if (status === 'synced') {
+    el.innerHTML = ICONS.cloud + ' Synced';
+    el.className = 'sync-indicator visible';
+  } else {
+    el.innerHTML = ICONS.cloud + ' Offline';
+    el.className = 'sync-indicator visible error';
+  }
+  syncStatusTimer = setTimeout(() => { el.className = 'sync-indicator'; }, 2500);
 }
 
 // ============================================================
@@ -505,6 +605,7 @@ const ICONS = {
   chevron: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
   download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
   upload: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+  cloud: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>`,
 };
 
 // ============================================================
@@ -725,7 +826,10 @@ function render() {
 
   // Header
   const header = h('div', { className: 'header' });
-  header.appendChild(h('h1', null, 'Wish List'));
+  const titleRow = h('div', { style: { position: 'relative', display: 'inline-block', width: '100%' } });
+  titleRow.appendChild(h('h1', null, 'Wish List'));
+  titleRow.appendChild(h('span', { id: 'sync-indicator', className: 'sync-indicator' }));
+  header.appendChild(titleRow);
   const total = pending.reduce((s, i) => s + (i.value || 0), 0);
   const priced = pending.filter(i => i.value !== null);
   header.appendChild(h('p', { className: 'subtitle' },
@@ -940,6 +1044,9 @@ function renderModal() {
 // ============================================================
 items = loadItems();
 render();
+
+// Cloud sync after initial render (non-blocking)
+syncOnLoad();
 
 // Register service worker
 if ('serviceWorker' in navigator) {
